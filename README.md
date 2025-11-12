@@ -13,8 +13,8 @@ Instead of generating the specification *after* the code, the API contract is de
 See [`/openapi/fpmi-library.yaml`](openapi/fpmi-library.yaml).
 
 ### Screenshots
-[Swagger main](docs/screenshots/fpmi-example-swagger-001.png)
-[Swagger examples](docs/screenshots/fpmi-example-swagger-002.png)
+- [Swagger main](docs/screenshots/fpmi-example-swagger-001.png)
+- [Swagger examples](docs/screenshots/fpmi-example-swagger-002.png)
 
 ### Preview
 You can visualize it using:
