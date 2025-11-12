@@ -1,0 +1,641 @@
+openapi: 3.0.3
+info:
+  title: SU FPMI Library API
+  description: >
+    API for managing the book library for the Faculty of Applied Mathematics
+    and Informatics (FPMI) at State University (SU).
+
+
+    **SECURITY:** This API is secured via OAuth 2.0 and requires specific
+    roles for read and write operations.
+  contact:
+    name: FPMI Development Support
+    email: fpmi-dev-support@su.com
+  version: '2025-11-10'
+servers:
+  - url: https://dev-api.su.com/fpmi/library/2025-11-10
+    description: Local Development Environment (Requires VPN or VNet access)
+    x-internal: true
+  - url: https://qa-api.su.com/fpmi/library/2025-11-10
+    description: Test Environment (Requires VPN or VNet access)
+    x-internal: true
+  - url: https://uat-api.su.com/fpmi/library/2025-11-10
+    description: Staging Public Environment
+    x-internal: false
+  - url: https://api.su.com/fpmi/library/2025-11-10
+    description: Production Environment
+    x-internal: false
+tags:
+  - name: Books
+    description: Operations for managing library books.
+security:
+  - oAuth2:
+      - Library.Manage
+paths:
+  /books:
+    get:
+      tags:
+        - Books
+      summary: Get All Books
+      description: Retrieves a paginated list of all books in the library, with filtering options.
+      operationId: Books_RetrieveList
+      security:
+        - oAuth2:
+            - Library.Manage
+      x-required-roles:
+        - '#/components/x-roles/Library.Books.View'
+      parameters:
+        - $ref: '#/components/parameters/SearchQuery'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          $ref: '#/components/responses/BooksList200'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '429': 
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        default:
+          $ref: '#/components/responses/ErrorDefault'
+    post:
+      tags:
+        - Books
+      summary: Add a New Book
+      description: Adds a new book record to the library.
+      operationId: Books_Create
+      security:
+        - oAuth2:
+            - Library.Manage
+      x-required-roles:
+        - '#/components/x-roles/Library.Books.Add'
+      requestBody:
+        description: The book to add to the library.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewBookRequest'
+      responses:
+        '201':
+          $ref: '#/components/responses/BookCreated201'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '429': 
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        default:
+          $ref: '#/components/responses/ErrorDefault'
+  /books/{bookId}:
+    get:
+      tags:
+        - Books
+      summary: Get Book by ID
+      description: Retrieves a single book by its unique ID.
+      operationId: Book_GetSingle
+      security:
+        - oAuth2:
+            - Library.Manage
+      x-required-roles:
+        - '#/components/x-roles/Library.Books.View'
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      responses:
+        '200':
+          $ref: '#/components/responses/Book200'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '429': 
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        default:
+          $ref: '#/components/responses/ErrorDefault'
+components:
+  securitySchemes:
+    oAuth2:
+      type: oauth2
+      description: OAuth 2.0 flow using the SU tenant
+        Bearer token in the format of a JWS and conforms to the specifications included in RFC8725.
+      flows:
+        authorizationCode:
+          authorizationUrl: https://login.microsoftonline.com/su-tenant/oauth2/v2.0/authorize
+          refreshUrl: https://login.microsoftonline.com/su-tenant/oauth2/v2.0/token
+          tokenUrl: https://login.microsoftonline.com/su-tenant/oauth2/v2.0/token
+          scopes:
+            Library.Manage: Allows adding and viewing books.
+  x-roles:
+    Library.Books.View:
+      description: Read-only access to library books.
+    Library.Books.Add:
+      description: Access to add new books to the library.
+  schemas:
+    Book:
+      type: object
+      description: Represents a single book in the library.
+      required:
+        - id
+        - title
+        - author
+        - isbn
+        - publishedDate
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Book's unique ID.
+          minLength: 36
+          maxLength: 36
+          pattern: "^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$"
+        title:
+          type: string
+          description: Book's title.
+          minLength: 1
+          maxLength: 255
+          pattern: "^[A-Za-z0-9\\s'.,:;!?()-]{1,255}$"
+        author:
+          type: string
+          description: Book's author.
+          minLength: 1
+          maxLength: 120
+          pattern: "^[A-Za-z\\s'.-]{1,120}$"
+        isbn:
+          type: string
+          description: 13-digit ISBN.
+          minLength: 10
+          maxLength: 13
+          pattern: "^(97(8|9))?\\d{9}(\\d|X)$"
+        publishedDate:
+          type: string
+          format: date
+          description: Publication date.
+          minLength: 10
+          maxLength: 10
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        addedAt:
+          type: string
+          format: date-time
+          description: When the book was added to the library.
+          readOnly: true
+          minLength: 20
+          maxLength: 20
+          pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+      example:
+        id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        title: "Advanced Calculus"
+        author: "Dr. Jane Doe"
+        isbn: "9780123456789"
+        publishedDate: "2023-01-15"
+        addedAt: "2025-11-10T14:30:00Z"
+    NewBookRequest:
+      type: object
+      description: Schema for adding a new book.
+      required:
+        - title
+        - author
+        - isbn
+        - publishedDate
+      properties:
+        title:
+          $ref: '#/components/schemas/Book/properties/title'
+        author:
+          $ref: '#/components/schemas/Book/properties/author'
+        isbn:
+          $ref: '#/components/schemas/Book/properties/isbn'
+        publishedDate:
+          $ref: '#/components/schemas/Book/properties/publishedDate'
+      example:
+        title: "Introduction to Algorithms"
+        author: "Dr. John Smith"
+        isbn: "9783161484100"
+        publishedDate: "2024-05-20"
+    BookListResponse:
+      type: object
+      description: A paginated response containing a list of books.
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          description: List of books for the current page
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/Book'         
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      example:
+        data:
+          - id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+            title: "API reference guide"
+            author: "Dr. Andrei Golovistikov"
+            isbn: "9780123456789"
+            publishedDate: "2025-01-15"
+            addedAt: "2025-11-10T14:30:00Z"
+        pagination:
+          totalItems: 1
+          limit: 20
+          offset: 0
+    Pagination:
+      type: object
+      description: Pagination details for a list response.
+      required:
+        - totalItems
+        - limit
+        - offset
+      properties:
+        totalItems:
+          type: integer
+          format: int32
+          description: Total number of items matching the query.
+          minimum: 0
+          maximum: 1000000
+        limit:
+          type: integer
+          format: int32
+          description: Number of items per page.
+          minimum: 1
+          maximum: 100
+        offset:
+          type: integer
+          format: int32
+          description: Current offset.
+          minimum: 0
+          maximum: 100000
+      example:
+        totalItems: 150
+        limit: 20
+        offset: 0
+    ErrorResponse:
+      type: object
+      description: Standardized error response (based on RFC 7807).
+      required:
+        - type
+        - title
+        - status
+        - detail
+      properties:
+        type:
+          type: string
+          format: uri
+          description: A URI reference that identifies the problem type.
+          minLength: 1
+          maxLength: 2048
+          pattern: "^https://[^\\s]+$"
+        title:
+          type: string
+          description: A short, human-readable summary of the problem type.
+          minLength: 1
+          maxLength: 100
+          pattern: "^[A-Za-z0-9 ._:-]{1,100}$"
+        status:
+          type: integer
+          format: int32
+          description: The HTTP status code.
+          minimum: 100
+          maximum: 599
+        detail:
+          type: string
+          description: A human-readable explanation specific to this occurrence of the problem.
+          minLength: 1
+          maxLength: 1024
+          pattern: "^[\\u0020-\\u007E]{1,1024}$"
+        instance:
+          type: string
+          description: A URI reference that identifies the specific occurrence of the problem.
+          minLength: 1
+          maxLength: 2048
+          pattern: "^(https://[^\\s]+|/[^\\s]*)$"
+      example:
+        type: "https://api.su.com/errors/InvalidParameter"
+        title: "InvalidParameter"
+        status: 400
+        detail: "The 'limit' query parameter must be between 1 and 100."
+        instance: "/books?limit=200"
+  headers:
+    Access-Control-Allow-Origin:
+      description: CORS support
+      schema:
+        type: string
+        pattern: "^(?!\\s*$).+"
+        maxLength: 1024
+        minLength: 1
+        example: '*'
+    RateLimit:
+      description: Rate limit
+      schema:
+        type: integer
+        format: int64
+        maximum: 2147483647
+        minimum: 0
+        example: 1000
+    Retry-After:
+      description: >
+        If rate limit exceeded, indicates how many seconds to wait before retrying
+      schema:
+        type: integer
+        format: int32
+        maximum: 3600
+        minimum: 1
+    WWW-Authenticate:
+      description: >
+        Contains the authentication scheme required to access the resource
+      schema:
+        type: string
+        pattern: "^(?!\\s*$).+"
+        maxLength: 2048
+        minLength: 1
+        example: 'Bearer realm="api", token_uri="https://login.microsoftonline.com/su-tenant/oauth2/v2.0/token", error="invalid_token", error_description="The access token is invalid or has expired"'
+  responses:
+    BooksList200:
+      description: A paginated list of books.
+      headers:
+        RateLimit:
+          $ref: '#/components/headers/RateLimit'
+        Access-Control-Allow-Origin:
+          $ref: '#/components/headers/Access-Control-Allow-Origin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BookListResponse'
+          examples:
+            SampleBooksList:
+              summary: Example of a paginated books list response
+              value:
+                data:
+                  - id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                    title: "Advanced Calculus"
+                    author: "Dr. Jane Doe"
+                    isbn: "9780123456789"
+                    publishedDate: "2023-01-15"
+                    addedAt: "2025-11-10T14:30:00Z"
+                pagination:
+                  totalItems: 1
+                  limit: 20
+                  offset: 0
+    BookCreated201:
+      description: The book was successfully created.
+      headers:
+        Location:
+          description: URL of the newly created book.
+          schema:
+            type: string
+            format: uri
+            minLength: 1
+            maxLength: 2048
+            pattern: "^https://[^\\s]+$"
+            example: "https://api.su.com/fpmi/library/2025-11-10/books/a1b2c3d4-e5f6-7890-1234-567890abcdef"
+        RateLimit:
+          $ref: '#/components/headers/RateLimit'
+        Access-Control-Allow-Origin:
+          $ref: '#/components/headers/Access-Control-Allow-Origin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Book'
+          examples:
+            CreatedBookExample:
+              summary: Example of a created book response
+              value:
+                id: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                title: "Introduction to Algorithms"
+                author: "Dr. John Smith"
+                isbn: "9783161484100"
+                publishedDate: "2024-05-20"
+                addedAt: "2025-11-10T16:00:00Z"
+    Book200:
+      description: The requested book.
+      headers:
+        RateLimit:
+          $ref: '#/components/headers/RateLimit'
+        Access-Control-Allow-Origin:
+          $ref: '#/components/headers/Access-Control-Allow-Origin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Book'
+          examples:
+            SampleBook:
+              summary: Example of a single book response
+              value:
+                id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                title: "Advanced Calculus"
+                author: "Dr. Jane Doe"
+                isbn: "9780123456789"
+                publishedDate: "2023-01-15"
+                addedAt: "2025-11-10T14:30:00Z"  
+    Error400:
+      description: Bad Request. The request was malformed or invalid.
+      headers:
+        RateLimit:
+          $ref: '#/components/headers/RateLimit'
+        Access-Control-Allow-Origin:
+          $ref: '#/components/headers/Access-Control-Allow-Origin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            ErrorInvalidISBN:
+                  summary: Validation error for ISBN
+                  value:
+                    type: "https://api.su.com/errors/InvalidParameter"
+                    title: "InvalidParameter"
+                    status: 400
+                    detail: "ISBN must be a valid ISBN-10 or ISBN-13."
+                    instance: "/books"          
+            InvalidParameterExample:
+              summary: Example of invalid parameter error
+              value:
+                type: "https://api.su.com/errors/InvalidParameter"
+                title: "InvalidParameter"
+                status: 400
+                detail: "Invalid value for parameter 'bookId'"
+    Error401:
+      description: Unauthorized. The request lacks valid authentication credentials.
+      headers:
+        RateLimit:
+          $ref: '#/components/headers/RateLimit'
+        Access-Control-Allow-Origin:
+          $ref: '#/components/headers/Access-Control-Allow-Origin'
+        WWW-Authenticate:
+          $ref: '#/components/headers/WWW-Authenticate'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            ErrorUnauthorized:
+              summary: Unauthorized with WWW-Authenticate header
+              value:
+                type: "https://api.su.com/errors/Unauthorized"
+                title: "Unauthorized"
+                status: 401
+                detail: "Missing or invalid access token"
+                instance: "/books"
+    Error403:
+      description: Forbidden. The authenticated user does not have permission to perform this action.
+      headers:
+        RateLimit:
+          $ref: '#/components/headers/RateLimit'
+        Access-Control-Allow-Origin:
+          $ref: '#/components/headers/Access-Control-Allow-Origin'
+        WWW-Authenticate:
+          $ref: '#/components/headers/WWW-Authenticate'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            type: "https://api.su.com/errors/Forbidden"
+            title: "Forbidden"
+            status: 403
+            detail: "User lacks the required role 'Library.Books.Add'."
+    Error404:
+      description: Not Found. The requested resource could not be found.
+      headers:
+        RateLimit:
+          $ref: '#/components/headers/RateLimit'
+        Access-Control-Allow-Origin:
+          $ref: '#/components/headers/Access-Control-Allow-Origin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            type: "https://api.su.com/errors/NotFound"
+            title: "NotFound"
+            status: 404
+            detail: "Book with ID '123e4567-e89b-12d3-a456-426614174000' not found."
+    Error409:
+      description: Conflict. The request could not be completed due to a conflict with the current state of the resource.
+      headers:
+        RateLimit:
+          $ref: '#/components/headers/RateLimit'
+        Access-Control-Allow-Origin:
+          $ref: '#/components/headers/Access-Control-Allow-Origin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            type: "https://api.su.com/errors/Conflict"
+            title: "Conflict"
+            status: 409
+            detail: "A book with ISBN '9783161484100' already exists."
+    Error429:
+      description: Too many requests - rate limit exceeded
+      headers:
+        RateLimit:
+          $ref: '#/components/headers/RateLimit'
+        Retry-After:
+          $ref: '#/components/headers/Retry-After'
+        Access-Control-Allow-Origin:
+          $ref: '#/components/headers/Access-Control-Allow-Origin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            RateLimitExceededExample:
+              summary: Example of rate limit exceeded error
+              value:
+                type: "https://api.su.com/errors/RateLimitExceeded"
+                title: "RateLimitExceeded"
+                status: 429
+                detail: "The rate limit for this endpoint has been exceeded. Please try again later"
+    Error500:
+      description: Internal Server Error. An unexpected error occurred.
+      headers:
+        Access-Control-Allow-Origin:
+          $ref: '#/components/headers/Access-Control-Allow-Origin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            type: "https://api.su.com/errors/InternalServerError"
+            title: "InternalServerError"
+            status: 500
+            detail: "An unexpected error occurred on the server."
+    ErrorDefault:
+      description: Unexpected error
+      headers:
+        Access-Control-Allow-Origin:
+          $ref: '#/components/headers/Access-Control-Allow-Origin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            UnexpectedErrorExample:
+              summary: Example of unexpected error
+              value:
+                type: "https://api.su.com/errors/UnexpectedError"
+                title: "UnexpectedError"
+                status: 500
+                detail: "An unexpected error occurred on the server"
+  parameters:
+    SearchQuery:
+      name: search
+      in: query
+      description: Search term to filter books by title or author.
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 100
+        pattern: "^[A-Za-z0-9\\s'.,-]+$"
+      example: "Advanced"
+    Limit:
+      name: limit
+      in: query
+      description: Number of results to return per page.
+      required: false
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 100
+        default: 20
+    Offset:
+      name: offset
+      in: query
+      description: Offset for pagination.
+      required: false
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        maximum: 100000
+        default: 0
+    BookId:
+      name: bookId
+      in: path
+      description: Unique identifier for the book (UUID).
+      required: true
+      schema:
+        type: string
+        format: uuid
+        minLength: 36
+        maxLength: 36
+        pattern: "^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$"
+      example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"                
